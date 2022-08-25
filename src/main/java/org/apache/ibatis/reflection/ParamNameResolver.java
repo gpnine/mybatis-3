@@ -56,25 +56,25 @@ public class ParamNameResolver {
 
   public ParamNameResolver(Configuration config, Method method) {
     this.useActualParamName = config.isUseActualParamName();
-    final Class<?>[] paramTypes = method.getParameterTypes();
-    final Annotation[][] paramAnnotations = method.getParameterAnnotations();
+    final Class<?>[] paramTypes = method.getParameterTypes(); // 获取参数类型
+    final Annotation[][] paramAnnotations = method.getParameterAnnotations(); // 获取参数和对应注解信息封装为[参数][注解]
     final SortedMap<Integer, String> map = new TreeMap<>();
-    int paramCount = paramAnnotations.length;
+    int paramCount = paramAnnotations.length; // 获取参数数量
     // get names from @Param annotations
-    for (int paramIndex = 0; paramIndex < paramCount; paramIndex++) {
+    for (int paramIndex = 0; paramIndex < paramCount; paramIndex++) { // 按参数数量遍历，从paramIndex为0开始
       if (isSpecialParameter(paramTypes[paramIndex])) {
         // skip special parameters
         continue;
       }
       String name = null;
-      for (Annotation annotation : paramAnnotations[paramIndex]) {
-        if (annotation instanceof Param) {
+      for (Annotation annotation : paramAnnotations[paramIndex]) { // 遍历每个参数的每个注解信息
+        if (annotation instanceof Param) { // 如果某个注解为@Param
           hasParamAnnotation = true;
-          name = ((Param) annotation).value();
+          name = ((Param) annotation).value(); // 获取该注解的值，也就是我们自定义的参数名称
           break;
         }
       }
-      if (name == null) {
+      if (name == null) { // 没用@Param注解，mybatis会去获取参数名
         // @Param was not specified.
         if (useActualParamName) {
           name = getActualParamName(method, paramIndex);
@@ -85,7 +85,7 @@ public class ParamNameResolver {
           name = String.valueOf(map.size());
         }
       }
-      map.put(paramIndex, name);
+      map.put(paramIndex, name); // 按参数下标为0开始为key,获取到的value为value放入map
     }
     names = Collections.unmodifiableSortedMap(map);
   }
@@ -119,23 +119,23 @@ public class ParamNameResolver {
    *          the args
    * @return the named params
    */
-  public Object getNamedParams(Object[] args) {
-    final int paramCount = names.size();
-    if (args == null || paramCount == 0) {
+  public Object getNamedParams(Object[] args) { // args[0] = @Param注解的参数对象/参数值
+    final int paramCount = names.size(); // names{0:@Param标注的key}
+    if (args == null || paramCount == 0) { // 判断传入的参数是否为空
       return null;
-    } else if (!hasParamAnnotation && paramCount == 1) {
+    } else if (!hasParamAnnotation && paramCount == 1) { // 判断hasParamAnnotation是否为false或paramCount是否为1
       Object value = args[names.firstKey()];
       return wrapToMapIfCollection(value, useActualParamName ? names.get(0) : null);
-    } else {
+    } else { // 关键方法，mybatis默认放置的map的kv和@Param自定义的kv都在这里
       final Map<String, Object> param = new ParamMap<>();
       int i = 0;
-      for (Map.Entry<Integer, String> entry : names.entrySet()) {
-        param.put(entry.getValue(), args[entry.getKey()]);
+      for (Map.Entry<Integer, String> entry : names.entrySet()) { // 将names转为set集合
+        param.put(entry.getValue(), args[entry.getKey()]); // 从set中获取value作为map的key，从args数据中按names的key从0开始取值作为map的value
         // add generic param names (param1, param2, ...)
-        final String genericParamName = GENERIC_NAME_PREFIX + (i + 1);
+        final String genericParamName = GENERIC_NAME_PREFIX + (i + 1); // 默认参数
         // ensure not to overwrite parameter named with @Param
         if (!names.containsValue(genericParamName)) {
-          param.put(genericParamName, args[entry.getKey()]);
+          param.put(genericParamName, args[entry.getKey()]); // 放入map
         }
         i++;
       }
